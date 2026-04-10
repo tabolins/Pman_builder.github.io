@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="lv" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Packman Kartes Būvētājs v2</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --text-xs: clamp(0.75rem, 0.72rem + 0.2vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.82rem + 0.32vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.15rem + 1.4vw, 2.35rem);
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+      --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem;
+      --radius-sm: 0.375rem; --radius-md: 0.65rem; --radius-lg: 1rem; --radius-xl: 1.2rem; --radius-full: 9999px;
+      --font-display: 'Cabinet Grotesk', system-ui, sans-serif;
+      --font-body: 'Satoshi', system-ui, sans-serif;
+      --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    :root, [data-theme="light"] {
+      --color-bg: #f7f6f2;
+      --color-surface: rgba(255,255,255,0.78);
+      --color-surface-2: rgba(255,255,255,0.92);
+      --color-text: #28251d;
+      --color-text-muted: #6f6a62;
+      --color-border: rgba(40,37,29,0.12);
+      --color-primary: #01696f;
+      --color-accent: #d19900;
+      --color-grid: #d9d4cd;
+      --color-card: rgba(255,255,255,0.72);
+    }
+    [data-theme="dark"] {
+      --color-bg: #101211;
+      --color-surface: rgba(23,25,24,0.82);
+      --color-surface-2: rgba(31,34,33,0.96);
+      --color-text: #efe8dd;
+      --color-text-muted: #aba294;
+      --color-border: rgba(255,255,255,0.11);
+      --color-primary: #4f98a3;
+      --color-accent: #e8af34;
+      --color-grid: #29302c;
+      --color-card: rgba(255,255,255,0.03);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      min-height: 100dvh;
+      font-family: var(--font-body);
+      color: var(--color-text);
+      background:
+        radial-gradient(circle at top, rgba(79,152,163,0.16), transparent 28%),
+        linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12)),
+        var(--color-bg);
+      padding: var(--space-4);
+    }
+    button { font: inherit; cursor: pointer; }
+    .app {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: var(--space-4);
+    }
+    .panel, .topbar {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      background: var(--color-surface);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 16px 36px rgba(0,0,0,0.16);
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding: var(--space-4);
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--color-accent), var(--color-primary));
+      color: white;
+    }
+    .brand h1 {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+    .brand p, .muted, .tool-note {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+    .top-actions, .button-row, .tool-grid {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+    }
+    .btn {
+      min-height: 44px;
+      padding: 0 var(--space-4);
+      border-radius: var(--radius-full);
+      border: 1px solid var(--color-border);
+      background: transparent;
+      color: var(--color-text);
+      transition: transform var(--transition), background var(--transition), border-color var(--transition);
+    }
+    .btn:hover, .btn:focus-visible { transform: translateY(-1px); }
+    .btn-primary { background: var(--color-primary); color: #f7fbfb; border-color: transparent; font-weight: 700; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: var(--space-4);
+    }
+    .board-wrap { padding: var(--space-4); position:relative; overflow:hidden; display:grid; gap:var(--space-4); }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      border-radius: calc(var(--radius-xl) - 0.25rem);
+      border: 1px solid var(--color-border);
+      background: #101318;
+      touch-action: none;
+    }
+    .sidebar {
+      padding: var(--space-4);
+      display: grid;
+      gap: var(--space-4);
+      align-content: start;
+    }
+    .card {
+      padding: var(--space-4);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      background: var(--color-card);
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      letter-spacing: -0.03em;
+      margin-bottom: var(--space-2);
+    }
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
+    .tool-btn {
+      min-height: 52px;
+      justify-content: flex-start;
+      border-radius: var(--radius-md);
+      padding: 0.85rem 0.9rem;
+      text-align: left;
+    }
+    .tool-btn.active {
+      background: var(--color-primary);
+      color: white;
+      border-color: transparent;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+    .stat {
+      padding: var(--space-3);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(255,255,255,0.03);
+    }
+    .stat-value {
+      font-size: var(--text-lg);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+    .legend {
+      display: grid;
+      gap: var(--space-2);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 0.35rem;
+      border: 1px solid rgba(255,255,255,0.22);
+      flex: 0 0 auto;
+    }
+    ul.instructions {
+      display: grid;
+      gap: var(--space-2);
+      padding-left: 1.1rem;
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+    .controls-bottom {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+    }
+    .dpad-wrap {
+      display: grid;
+      justify-content: start;
+      gap: var(--space-2);
+      flex: 1 1 220px;
+    }
+    .dpad-title {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 64px);
+      grid-template-rows: repeat(2, 64px);
+      gap: var(--space-2);
+      justify-content: start;
+    }
+    .dpad .spacer { visibility: hidden; }
+    .dpad-btn {
+      min-width: 64px;
+      min-height: 64px;
+      border-radius: 1rem;
+      border: 1px solid var(--color-border);
+      background: var(--color-card);
+      color: var(--color-text);
+      font-size: 1.4rem;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      transition: transform var(--transition), background var(--transition), border-color var(--transition);
+    }
+    .dpad-btn:active, .dpad-btn.active {
+      transform: translateY(1px) scale(0.98);
+      background: var(--color-primary);
+      color: white;
+      border-color: transparent;
+    }
+    .mobile-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: end;
+      flex: 0 0 auto;
+    }
+    .shoot-btn {
+      min-width: 92px;
+      min-height: 92px;
+      border-radius: 1.2rem;
+      font-size: 1.1rem;
+      padding: 0 1rem;
+    }
+    .overlay-screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+      pointer-events: none;
+    }
+    .overlay-inner {
+      max-width: 360px;
+      width: 100%;
+      border-radius: 1.2rem;
+      border: 1px solid var(--color-border);
+      background: rgba(10,12,14,0.86);
+      color: #f4f1e8;
+      padding: var(--space-4);
+      text-align: center;
+      box-shadow: 0 18px 44px rgba(0,0,0,0.5);
+      pointer-events: auto;
+    }
+    .overlay-title {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      margin-bottom: var(--space-2);
+      letter-spacing: -0.03em;
+    }
+    .overlay-text {
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-3);
+    }
+    .overlay-buttons {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+    }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .controls-bottom { align-items: end; justify-content: space-between; }
+      .mobile-actions { justify-content: flex-end; }
+      .shoot-btn { min-width: 84px; min-height: 84px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a9 9 0 1 0 9 9"></path>
+            <path d="M12 12 21 8"></path>
+          </svg>
+        </div>
+        <div>
+          <h1>Packman Kartes Būvētājs</h1>
+          <p>Uzbūvē savu labirintu, saliec mošķus un pēc tam pats spēlē.</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn" id="themeToggle">Tēma</button>
+        <button class="btn" id="randomBtn">Random karte</button>
+        <button class="btn" id="clearBtn">Notīrīt</button>
+        <button class="btn btn-primary" id="modeBtn">Sākt spēli</button>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="panel board-wrap">
+        <canvas id="board" width="720" height="720" aria-label="Packman kartes laukums"></canvas>
+        <div class="overlay-screen" id="gameOverlay">
+          <div class="overlay-inner">
+            <div class="overlay-title" id="overlayTitle">Spēle beigusies</div>
+            <div class="overlay-text" id="overlayText">Tu savāci 0 punktus.</div>
+            <div class="overlay-buttons">
+              <button class="btn btn-primary" id="overlayRestart">Spēlēt vēlreiz</button>
+              <button class="btn" id="overlayBuild">Atpakaļ būvēšanai</button>
+            </div>
+          </div>
+        </div>
+        <div class="controls-bottom" aria-label="Mobilās vadības pogas">
+          <div class="dpad-wrap" aria-label="Kustības bultiņas">
+            <div class="dpad-title">Mobilajai spēlei: bultiņas pa kreisi, Shoot poga pa labi.</div>
+            <div class="dpad">
+              <div class="spacer"></div>
+              <button class="dpad-btn" data-dir="up" aria-label="Uz augšu">↑</button>
+              <div class="spacer"></div>
+              <button class="dpad-btn" data-dir="left" aria-label="Pa kreisi">←</button>
+              <button class="dpad-btn" data-dir="down" aria-label="Uz leju">↓</button>
+              <button class="dpad-btn" data-dir="right" aria-label="Pa labi">→</button>
+            </div>
+          </div>
+          <div class="mobile-actions">
+            <button class="dpad-btn shoot-btn" id="shootBtn" aria-label="Šaut">Shoot</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel sidebar">
+        <section class="card">
+          <h2 class="section-title">Būvēšanas rīki</h2>
+          <p class="tool-note" style="margin-bottom: 0.85rem;">Izvēlies, ko likt kartē, tad klikšķini vai velc pa rūtiņām.</p>
+          <div class="tool-grid" id="tools"></div>
+        </section>
+
+        <section class="card">
+          <h2 class="section-title">Statistika</h2>
+          <div class="stats">
+            <div class="stat"><div class="muted">Punkti kartē</div><div class="stat-value" id="dotsCount">0</div></div>
+            <div class="stat"><div class="muted">Mošķi</div><div class="stat-value" id="monstersCount">0</div></div>
+            <div class="stat"><div class="muted">Šķēršļi</div><div class="stat-value" id="wallsCount">0</div></div>
+            <div class="stat"><div class="muted">Savāktie punkti</div><div class="stat-value" id="scoreCount">0</div></div>
+            <div class="stat"><div class="muted">Lodes</div><div class="stat-value" id="ammoCount">0 / 3</div></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="section-title">Leģenda</h2>
+          <div class="legend">
+            <div class="legend-item"><span class="swatch" style="background:#1f3658"></span> Sienas / šķēršļi</div>
+            <div class="legend-item"><span class="swatch" style="background:#f4d44d"></span> Packman starts</div>
+            <div class="legend-item"><span class="swatch" style="background:#f5e8a4"></span> Punkti</div>
+            <div class="legend-item"><span class="swatch" style="background:#d85c66"></span> Mošķi</div>
+            <div class="legend-item"><span class="swatch" style="background:#66c7ff"></span> Brīva taka</div>
+            <div class="legend-item"><span class="swatch" style="background:#b06cff"></span> Stop power-up</div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="section-title">Kā spēlēt</h2>
+          <ul class="instructions">
+            <li>Būvēšanas režīmā saliec sienas, punktus, mošķus un Packman starta vietu.</li>
+            <li>Random karte automātiski uzģenerē spēlējamu labirintu ar punktiem un mošķiem.</li>
+            <li>Spēles režīmā kustība ir ar bultiņām vai WASD.</li>
+            <li>Desktop versijā šāviens ir ar Spacebar, mobilajā versijā ar Shoot pogu.</li>
+            <li>Ik pēc 5 savāktiem punktiem dabū 1 lodi, maksimums 3.</li>
+            <li>Ja mošķis pieskaras varonim, raunds beidzas.</li>
+            <li>"Stop" lauciņā mošķi sastingst uz 5 sekundēm.</li>
+          </ul>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const html = document.documentElement;
+      let theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      html.setAttribute('data-theme', theme);
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        theme = theme === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', theme);
+        draw();
+      });
+
+      const canvas = document.getElementById('board');
+      const ctx = canvas.getContext('2d');
+      const modeBtn = document.getElementById('modeBtn');
+      const randomBtn = document.getElementById('randomBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const toolsWrap = document.getElementById('tools');
+      const dotsCount = document.getElementById('dotsCount');
+      const monstersCount = document.getElementById('monstersCount');
+      const wallsCount = document.getElementById('wallsCount');
+      const scoreCount = document.getElementById('scoreCount');
+      const ammoCount = document.getElementById('ammoCount');
+      const dpadButtons = [...document.querySelectorAll('.dpad-btn')];
+      const shootBtn = document.getElementById('shootBtn');
+      const overlay = document.getElementById('gameOverlay');
+      const overlayTitle = document.getElementById('overlayTitle');
+      const overlayText = document.getElementById('overlayText');
+      const overlayRestart = document.getElementById('overlayRestart');
+      const overlayBuild = document.getElementById('overlayBuild');
+
+      const rows = 18;
+      const cols = 18;
+      const size = canvas.width / cols;
+      let drawing = false;
+      let gameMode = false;
+      let animationId = null;
+      let lastTime = 0;
+      let score = 0;
+      let ammo = 0;
+      let collectedDots = 0;
+      let freezeUntil = 0;
+      let message = 'Būvē savu karti.';
+
+      const tileColors = {
+        empty: '#66c7ff',
+        wall: '#1f3658',
+        dot: '#f5e8a4',
+        player: '#f4d44d',
+        monster: '#d85c66',
+        stop: '#b06cff'
+      };
+
+      const tools = [
+        { key: 'wall', label: 'Siena' },
+        { key: 'dot', label: 'Punkts' },
+        { key: 'player', label: 'Packman starts' },
+        { key: 'monster', label: 'Mošķis' },
+        { key: 'stop', label: 'Stop power-up' },
+        { key: 'empty', label: 'Dzēst uz taku' }
+      ];
+      let activeTool = 'wall';
+
+      const grid = Array.from({ length: rows }, () => Array(cols).fill('dot'));
+      const monsters = [];
+      const bullets = [];
+      const player = { x: 1, y: 1, dirX: 0, dirY: 0, moveCooldown: 0 };
+
+      function renderTools() {
+        toolsWrap.innerHTML = '';
+        tools.forEach(tool => {
+          const btn = document.createElement('button');
+          btn.className = 'btn tool-btn' + (tool.key === activeTool ? ' active' : '');
+          btn.textContent = tool.label;
+          btn.addEventListener('click', () => {
+            activeTool = tool.key;
+            renderTools();
+          });
+          toolsWrap.appendChild(btn);
+        });
+      }
+
+      function resetBoard(fill = 'dot') {
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            grid[y][x] = fill;
+          }
+        }
+        monsters.length = 0;
+        bullets.length = 0;
+        player.x = 1;
+        player.y = 1;
+        player.dirX = 0;
+        player.dirY = 0;
+        score = 0;
+        ammo = 0;
+        collectedDots = 0;
+        freezeUntil = 0;
+        message = 'Būvē savu karti.';
+      }
+
+      function setBorderWalls() {
+        for (let x = 0; x < cols; x++) {
+          grid[0][x] = 'wall';
+          grid[rows - 1][x] = 'wall';
+        }
+        for (let y = 0; y < rows; y++) {
+          grid[y][0] = 'wall';
+          grid[y][cols - 1] = 'wall';
+        }
+      }
+
+      function countType(type) {
+        let total = 0;
+        for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (grid[y][x] === type) total++;
+        return total;
+      }
+
+      function placePlayer(x, y) {
+        for (let yy = 0; yy < rows; yy++) {
+          for (let xx = 0; xx < cols; xx++) {
+            if (grid[yy][xx] === 'player') grid[yy][xx] = 'empty';
+          }
+        }
+        grid[y][x] = 'player';
+        player.x = x;
+        player.y = y;
+      }
+
+      function rebuildMonstersFromGrid() {
+        monsters.length = 0;
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            if (grid[y][x] === 'monster') monsters.push({ x, y, step: Math.random() * 1000 });
+            if (grid[y][x] === 'player') { player.x = x; player.y = y; }
+          }
+        }
+      }
+
+      function updateStats() {
+        dotsCount.textContent = countType('dot');
+        monstersCount.textContent = countType('monster');
+        wallsCount.textContent = countType('wall');
+        scoreCount.textContent = score;
+        ammoCount.textContent = `${ammo} / 3`;
+      }
+
+      function drawTile(x, y, type) {
+        const px = x * size;
+        const py = y * size;
+        ctx.fillStyle = tileColors.empty;
+        ctx.fillRect(px, py, size, size);
+
+        if (type === 'wall') {
+          ctx.fillStyle = tileColors.wall;
+          ctx.fillRect(px, py, size, size);
+          ctx.fillStyle = 'rgba(255,255,255,0.08)';
+          ctx.fillRect(px, py, size, 4);
+        } else if (type === 'dot') {
+          ctx.fillStyle = '#8bd9ff';
+          ctx.fillRect(px, py, size, size);
+          ctx.fillStyle = tileColors.dot;
+          ctx.beginPath();
+          ctx.arc(px + size / 2, py + size / 2, size * 0.12, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (type === 'player') {
+          ctx.fillStyle = '#8bd9ff';
+          ctx.fillRect(px, py, size, size);
+          ctx.fillStyle = tileColors.player;
+          ctx.beginPath();
+          ctx.moveTo(px + size / 2, py + size / 2);
+          ctx.arc(px + size / 2, py + size / 2, size * 0.34, 0.25, Math.PI * 1.75);
+          ctx.closePath();
+          ctx.fill();
+        } else if (type === 'monster') {
+          ctx.fillStyle = '#8bd9ff';
+          ctx.fillRect(px, py, size, size);
+          ctx.fillStyle = tileColors.monster;
+          ctx.beginPath();
+          ctx.roundRect(px + size * 0.18, py + size * 0.2, size * 0.64, size * 0.58, 8);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(px + size * 0.4, py + size * 0.45, size * 0.08, 0, Math.PI * 2);
+          ctx.arc(px + size * 0.6, py + size * 0.45, size * 0.08, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (type === 'stop') {
+          ctx.fillStyle = '#8bd9ff';
+          ctx.fillRect(px, py, size, size);
+          ctx.fillStyle = tileColors.stop;
+          ctx.beginPath();
+          ctx.roundRect(px + size * 0.2, py + size * 0.2, size * 0.6, size * 0.6, 6);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = '700 ' + (size * 0.35) + 'px Satoshi, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('S', px + size / 2, py + size / 2);
+        } else {
+          ctx.fillStyle = '#8bd9ff';
+          ctx.fillRect(px, py, size, size);
+        }
+      }
+
+      function drawGridLines() {
+        ctx.strokeStyle = getComputedStyle(html).getPropertyValue('--color-grid').trim();
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= cols; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * size, 0);
+          ctx.lineTo(i * size, canvas.height);
+          ctx.stroke();
+        }
+        for (let i = 0; i <= rows; i++) {
+          ctx.beginPath();
+          ctx.moveTo(0, i * size);
+          ctx.lineTo(canvas.width, i * size);
+          ctx.stroke();
+        }
+      }
+
+      function drawBullets() {
+        ctx.save();
+        ctx.strokeStyle = '#ff6bd6';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        for (const bullet of bullets) {
+          if (!bullet.active) continue;
+          const cx = bullet.x * size + size / 2;
+          const cy = bullet.y * size + size / 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx - bullet.dx * 0.03, cy - bullet.dy * 0.03);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawHud() {
+        ctx.fillStyle = 'rgba(10,12,14,0.72)';
+        ctx.fillRect(0, 0, canvas.width, 38);
+        ctx.fillRect(0, canvas.height - 38, canvas.width, 38);
+        ctx.fillStyle = '#f4f1e8';
+        ctx.font = '700 15px Satoshi, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Lodes: ${ammo} / 3`, 14, 24);
+        ctx.textAlign = 'right';
+        ctx.fillText(`Punkti: ${score}`, canvas.width - 14, 24);
+        ctx.textAlign = 'left';
+        ctx.font = '500 15px Satoshi, sans-serif';
+        ctx.fillText((gameMode ? 'SPĒLE' : 'BŪVĒŠANA') + ' • ' + message, 14, canvas.height - 14);
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            drawTile(x, y, grid[y][x]);
+          }
+        }
+        drawBullets();
+        drawGridLines();
+        drawHud();
+        updateStats();
+      }
+
+      function getCellFromPointer(event) {
+        const rect = canvas.getBoundingClientRect();
+        const scale = canvas.width / rect.width;
+        const x = Math.floor(((event.clientX - rect.left) * scale) / size);
+        const y = Math.floor(((event.clientY - rect.top) * scale) / size);
+        if (x < 0 || x >= cols || y < 0 || y >= rows) return null;
+        return { x, y };
+      }
+
+      function applyTool(cell) {
+        if (!cell || gameMode) return;
+        if (cell.x === 0 || cell.y === 0 || cell.x === cols - 1 || cell.y === rows - 1) {
+          if (activeTool !== 'wall') return;
+        }
+        if (activeTool === 'player') {
+          placePlayer(cell.x, cell.y);
+        } else {
+          grid[cell.y][cell.x] = activeTool;
+        }
+        rebuildMonstersFromGrid();
+        draw();
+      }
+
+      canvas.addEventListener('pointerdown', event => {
+        drawing = true;
+        applyTool(getCellFromPointer(event));
+      });
+      canvas.addEventListener('pointermove', event => {
+        if (drawing) applyTool(getCellFromPointer(event));
+      });
+      window.addEventListener('pointerup', () => drawing = false);
+
+      function randomMap() {
+        resetBoard('dot');
+        setBorderWalls();
+        for (let y = 2; y < rows - 2; y += 2) {
+          for (let x = 2; x < cols - 2; x += 2) {
+            if (Math.random() > 0.32) grid[y][x] = 'wall';
+            const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+            const [dx, dy] = dirs[Math.floor(Math.random() * dirs.length)];
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx > 0 && nx < cols - 1 && ny > 0 && ny < rows - 1) grid[ny][nx] = 'wall';
+          }
+        }
+        for (let y = 1; y < rows - 1; y++) {
+          for (let x = 1; x < cols - 1; x++) {
+            if (grid[y][x] !== 'wall') grid[y][x] = Math.random() > 0.16 ? 'dot' : 'empty';
+          }
+        }
+        placePlayer(1, 1);
+        const monsterSpots = [[cols - 2, 1], [cols - 2, rows - 2], [Math.floor(cols / 2), Math.floor(rows / 2)]];
+        monsterSpots.forEach(([x,y]) => {
+          if (grid[y][x] !== 'wall' && grid[y][x] !== 'player') grid[y][x] = 'monster';
+        });
+        rebuildMonstersFromGrid();
+        message = 'Random karte uzģenerēta.';
+        draw();
+      }
+
+      function canMoveTo(x, y) {
+        return x >= 0 && x < cols && y >= 0 && y < rows && grid[y][x] !== 'wall';
+      }
+
+      function showOverlay(title, textContent) {
+        overlayTitle.textContent = title;
+        overlayText.textContent = textContent;
+        overlay.style.display = 'flex';
+      }
+      function hideOverlay() { overlay.style.display = 'none'; }
+
+      function startGame() {
+        rebuildMonstersFromGrid();
+        if (countType('player') === 0) {
+          message = 'Ieliec vispirms Packman starta vietu.';
+          draw();
+          return;
+        }
+        hideOverlay();
+        gameMode = true;
+        score = 0;
+        ammo = 0;
+        collectedDots = 0;
+        freezeUntil = 0;
+        message = 'Savāc punktus, krāj lodes un izvairies no mošķiem.';
+        modeBtn.textContent = 'Atpakaļ būvēšanai';
+        lastTime = performance.now();
+        if (animationId) cancelAnimationFrame(animationId);
+        animationId = requestAnimationFrame(loop);
+      }
+
+      function stopGame() {
+        gameMode = false;
+        player.dirX = 0;
+        player.dirY = 0;
+        modeBtn.textContent = 'Sākt spēli';
+        if (animationId) cancelAnimationFrame(animationId);
+        animationId = null;
+        draw();
+      }
+
+      function endRound(text) {
+        message = text;
+        stopGame();
+        showOverlay('Spēle beigusies', `${text} Punkti: ${score}.`);
+      }
+
+      function movePlayer() {
+        const nx = player.x + player.dirX;
+        const ny = player.y + player.dirY;
+        if (!canMoveTo(nx, ny)) return;
+
+        if (grid[player.y][player.x] === 'player') {
+          grid[player.y][player.x] = 'empty';
+        }
+
+        player.x = nx;
+        player.y = ny;
+
+        if (grid[ny][nx] === 'dot') {
+          score += 1;
+          collectedDots += 1;
+          if (collectedDots % 5 === 0 && ammo < 3) ammo += 1;
+        } else if (grid[ny][nx] === 'stop') {
+          freezeUntil = performance.now() + 5000;
+          message = 'Mošķi sastinga uz 5s!';
+        }
+
+        grid[ny][nx] = 'player';
+      }
+
+      function shoot() {
+        if (!gameMode || ammo <= 0) return;
+        if (player.dirX === 0 && player.dirY === 0) {
+          message = 'Vispirms izvēlies kustības virzienu.';
+          draw();
+          return;
+        }
+        ammo -= 1;
+        bullets.push({
+          x: player.x + player.dirX * 0.6,
+          y: player.y + player.dirY * 0.6,
+          dx: player.dirX * 60,
+          dy: player.dirY * 60,
+          active: true
+        });
+        message = 'Šāviens.';
+      }
+
+      function updateBullets(dt) {
+        for (const bullet of bullets) {
+          if (!bullet.active) continue;
+          bullet.x += bullet.dx * dt;
+          bullet.y += bullet.dy * dt;
+          const gx = Math.round(bullet.x);
+          const gy = Math.round(bullet.y);
+          if (gx < 0 || gx >= cols || gy < 0 || gy >= rows || grid[gy][gx] === 'wall') {
+            bullet.active = false;
+            continue;
+          }
+          const hitIndex = monsters.findIndex(monster => monster.x === gx && monster.y === gy);
+          if (hitIndex !== -1) {
+            monsters.splice(hitIndex, 1);
+            grid[gy][gx] = 'empty';
+            bullet.active = false;
+            message = 'Mošķis sašauts.';
+          }
+        }
+      }
+
+      function moveMonsters() {
+        if (performance.now() < freezeUntil) return;
+        const occupied = new Set(monsters.map(m => `${m.x},${m.y}`));
+        for (const monster of monsters) {
+          if (grid[monster.y][monster.x] === 'monster') grid[monster.y][monster.x] = 'empty';
+          const options = [[1,0],[-1,0],[0,1],[0,-1]]
+            .map(([dx,dy]) => ({ x: monster.x + dx, y: monster.y + dy }))
+            .filter(pos => canMoveTo(pos.x, pos.y) && !occupied.has(`${pos.x},${pos.y}`));
+          if (options.length) {
+            options.sort((a,b) => {
+              const da = Math.abs(a.x - player.x) + Math.abs(a.y - player.y) + Math.random();
+              const db = Math.abs(b.x - player.x) + Math.abs(b.y - player.y) + Math.random();
+              return da - db;
+            });
+            const pick = Math.random() > 0.35 ? options[0] : options[Math.floor(Math.random() * options.length)];
+            monster.x = pick.x;
+            monster.y = pick.y;
+          }
+          if (grid[monster.y][monster.x] === 'dot') grid[monster.y][monster.x] = 'empty';
+          if (grid[monster.y][monster.x] === 'player') {
+            endRound('Mošķis tevi noķēra.');
+            return;
+          }
+          grid[monster.y][monster.x] = 'monster';
+        }
+      }
+
+      function loop(time) {
+        if (!gameMode) return;
+        const dt = Math.min((time - lastTime) / 1000, 0.04);
+        lastTime = time;
+        player.moveCooldown += dt;
+        if (player.moveCooldown > 0.18) {
+          movePlayer();
+          updateBullets(dt);
+          if (gameMode) moveMonsters();
+          player.moveCooldown = 0;
+        }
+        if (monsters.some(monster => monster.x === player.x && monster.y === player.y)) {
+          endRound('Mošķis tevi noķēra.');
+          return;
+        }
+        if (countType('dot') === 0) {
+          endRound('Tu savāci visus punktus.');
+          return;
+        }
+        draw();
+        if (gameMode) animationId = requestAnimationFrame(loop);
+      }
+
+      function setDirection(dir) {
+        if (!gameMode) return;
+        if (dir === 'left') { player.dirX = -1; player.dirY = 0; }
+        if (dir === 'right') { player.dirX = 1; player.dirY = 0; }
+        if (dir === 'up') { player.dirX = 0; player.dirY = -1; }
+        if (dir === 'down') { player.dirX = 0; player.dirY = 1; }
+      }
+
+      window.addEventListener('keydown', event => {
+        const key = event.key.toLowerCase();
+        if (key === 'arrowleft' || key === 'a') setDirection('left');
+        if (key === 'arrowright' || key === 'd') setDirection('right');
+        if (key === 'arrowup' || key === 'w') setDirection('up');
+        if (key === 'arrowdown' || key === 's') setDirection('down');
+        if (event.code === 'Space') {
+          event.preventDefault();
+          shoot();
+        }
+      });
+
+      dpadButtons.forEach(button => {
+        const dir = button.dataset.dir;
+        if (!dir) return;
+        const press = (event) => {
+          event.preventDefault();
+          setDirection(dir);
+          button.classList.add('active');
+        };
+        const release = () => button.classList.remove('active');
+        button.addEventListener('pointerdown', press);
+        button.addEventListener('pointerup', release);
+        button.addEventListener('pointercancel', release);
+        button.addEventListener('pointerleave', release);
+      });
+
+      if (shootBtn) {
+        const releaseShoot = () => shootBtn.classList.remove('active');
+        shootBtn.addEventListener('pointerdown', (event) => {
+          event.preventDefault();
+          shootBtn.classList.add('active');
+          shoot();
+        });
+        shootBtn.addEventListener('pointerup', releaseShoot);
+        shootBtn.addEventListener('pointercancel', releaseShoot);
+        shootBtn.addEventListener('pointerleave', releaseShoot);
+      }
+
+      modeBtn.addEventListener('click', () => {
+        if (gameMode) {
+          message = 'Atpakaļ būvēšanas režīmā.';
+          stopGame();
+          hideOverlay();
+        } else {
+          startGame();
+        }
+      });
+
+      overlayRestart.addEventListener('click', () => {
+        hideOverlay();
+        startGame();
+      });
+      overlayBuild.addEventListener('click', () => {
+        hideOverlay();
+        message = 'Atpakaļ būvēšanas režīmā.';
+        stopGame();
+      });
+
+      randomBtn.addEventListener('click', () => {
+        stopGame();
+        hideOverlay();
+        randomMap();
+      });
+
+      clearBtn.addEventListener('click', () => {
+        stopGame();
+        hideOverlay();
+        resetBoard('dot');
+        setBorderWalls();
+        placePlayer(1, 1);
+        draw();
+      });
+
+      // Init
+      resetBoard('dot');
+      setBorderWalls();
+      placePlayer(1, 1);
+      renderTools();
+      draw();
+    })();
+  </script>
+</body>
+</html>
