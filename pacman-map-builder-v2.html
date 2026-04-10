@@ -806,13 +806,6 @@
           message = 'Mošķi sastinga uz 5s!';
       }
 
-        grid[ny][nx] = 'player';
-          score += 1;
-          collectedDots += 1;
-          if (collectedDots % 5 === 0 && ammo < 3) ammo += 1;
-        }
-      }
-
       function shoot() {
         if (!gameMode || ammo <= 0) return;
         if (player.dirX === 0 && player.dirY === 0) {
