@@ -789,7 +789,7 @@
       function movePlayer() {
         const nx = player.x + player.dirX;
         const ny = player.y + player.dirY;
-        if (!canMoveTo(nx, ny)) return;\
+        if (!canMoveTo(nx, ny)) return;
         
          if (grid[player.y][player.x] === 'player') {
           grid[player.y][player.x] = 'empty';
