@@ -795,10 +795,10 @@
         }
         ammo -= 1;
         bullets.push({
-          x: player.x + player.dirX * 0.1,
-          y: player.y + player.dirY * 0.1,
-          dx: player.dirX * 20,
-          dy: player.dirY * 20,
+          x: player.x + player.dirX * 0.5,
+          y: player.y + player.dirY * 0.5,
+          dx: player.dirX * 40,
+          dy: player.dirY * 40,
           active: true
         });
         message = 'Šāviens.';
