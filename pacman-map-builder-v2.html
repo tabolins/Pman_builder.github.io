@@ -464,7 +464,7 @@
         wall: '#1f3658',
         dot: '#f5e8a4',
         player: '#f4d44d',
-        monster: '#d85c66'
+        monster: '#d85c66',
         stop: '#b06cff'  
       };
 
@@ -789,10 +789,14 @@
       function movePlayer() {
         const nx = player.x + player.dirX;
         const ny = player.y + player.dirY;
-        if (!canMoveTo(nx, ny)) return;
-        if (grid[player.y][player.x] === 'player') grid[player.y][player.x] = 'empty';
+        if (!canMoveTo(nx, ny)) return;\
+        
+         if (grid[player.y][player.x] === 'player') {
+          grid[player.y][player.x] = 'empty';
+  }
         player.x = nx;
         player.y = ny;
+        
         if (grid[ny][nx] === 'dot') {
         score += 1;
         collectedDots += 1;
